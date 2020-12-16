@@ -1,0 +1,200 @@
+#include <SD.h>
+#include <SPI.h>
+#include <MPU6050_tockn.h>
+#include <Wire.h>
+#include <Servo.h>
+
+MPU6050 mpu6050(Wire);
+Servo myservo1;
+Servo myservo2;
+
+int pos1 = 0;
+int pos2 = 0;
+int i = 0;
+bool up = true;
+
+const int buttonPin = 10;     // the number of the pushbutton pin
+const int ledPin =  7;      // the number of the LED pin
+const int chipSelect = 4;
+
+int initialT = 0;
+int buttonState = 0;
+int buttonStateprev = 0;
+bool SDON = false;
+bool newname = false;
+int sdTime = 0;
+int count = 0;
+int angle = 0;
+bool spinmode = true;
+
+int sizeDirectory(File dir, int numTabs) {
+ 
+  int k = 0;
+   while(true) {
+     k = k+1;
+     File entry =  dir.openNextFile();
+     /*
+     Serial.print(entry);
+     Serial.print(",");
+     Serial.println(entry.size());
+     */
+     if (! entry) {
+       break;
+     }
+     entry.close();
+   }
+   return k;
+   
+}
+
+  char FILENAME[12] = "data";
+  String csv = ".csv";
+ 
+
+void setup() {
+ 
+  Serial.begin(9600);
+  Wire.begin();
+  mpu6050.begin();
+  mpu6050.calcGyroOffsets(true);
+ 
+  Serial.print("Initializing SD card...");
+ 
+  // see if the card is present and can be initialized:
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    return;
+  }
+  Serial.println("card initialized.");
+
+  /*File root = SD.open("/");
+  int A = sizeDirectory(root, 0);
+  String V1 = String(A);
+  root.close();
+ 
+  if ((A > 0) && (A < 10)){
+    FILENAME[4] = V1.charAt(0);
+  }
+
+  if ((A >= 10) && (A < 100)){
+    FILENAME[4] = V1.charAt(0);
+    FILENAME[5] = V1.charAt(1);
+  }
+
+  int Q = 5+floor(log10(A));
+ 
+  for(int i=0; i<4; i++){
+    if (A == 0){
+      Q = 4;
+    }
+    FILENAME[Q+i] = csv.charAt(i);
+  }
+
+  Serial.println(FILENAME);
+*/
+
+pinMode(ledPin, OUTPUT);
+myservo1.attach(6);
+myservo2.attach(9);
+
+ pos1 = map(angle, 90, 0, 116, 32);
+ pos2 = map (angle, 90, 0, 88, 8);
+
+}
+ 
+void loop() {
+
+if(spinmode){
+
+    int SP1 = map(i, 90, 0, 116, 32);
+    int SP2 = map(i, 90, 0, 88, 8);
+    myservo1.write(SP1);
+    myservo2.write(SP2);
+
+    if (up){
+      i=i+5;      
+    }
+
+    else{
+      i=i-5;
+    }
+
+    if(i==90){
+      up = false;
+    }
+
+    if(i==0){
+      up = true;
+    }
+
+}
+
+else{  
+ myservo1.write(pos1);
+ myservo2.write(pos2);
+}
+
+ 
+ digitalWrite(ledPin, HIGH);
+ 
+  if (count == 0){
+    initialT = millis();
+    count = count + 1;
+  }
+ 
+  int logTime = millis() - initialT;
+  mpu6050.update();
+  String dataString = "";
+  dataString += String(logTime);
+  dataString += ",";
+  dataString += String(mpu6050.getTemp());
+  if (spinmode){
+  dataString += ",";
+  dataString += String(i);
+  }
+  dataString += ",";
+  dataString += String(mpu6050.getAccX());
+  dataString += ",";
+  dataString += String(mpu6050.getAccY());
+  dataString += ",";
+  dataString += String(mpu6050.getAccZ());
+  dataString += ",";
+  dataString +=String(mpu6050.getGyroX());
+  dataString += ",";
+  dataString += String(mpu6050.getGyroY());
+  dataString += ",";
+  dataString += String(mpu6050.getGyroZ());
+  dataString += ",";
+ dataString += String(mpu6050.getAccAngleX());
+ dataString += ",";
+ dataString += String(mpu6050.getAccAngleY());
+ dataString += ",";
+ dataString += String(mpu6050.getGyroAngleX());
+ dataString += ",";
+ dataString += String(mpu6050.getGyroAngleY());
+ dataString += ",";
+ dataString += String(mpu6050.getGyroAngleZ());
+ dataString += ",";
+ dataString += String(mpu6050.getAngleX());
+ dataString += ",";
+ dataString += String( mpu6050.getAngleY());
+ dataString += ",";
+ dataString += String( mpu6050.getAngleZ());
+ 
+ File dataFile = SD.open("data.csv", FILE_WRITE);
+
+  // if the file is available, write to it:
+  if (dataFile) {
+    dataFile.println(dataString);
+    dataFile.close();
+    Serial.println(dataString);
+    // print to the serial port too:
+  }  
+  // if the file isn't open, pop up an error:
+  else {
+    Serial.println("ERROR");
+  }
+ 
+ 
+}
